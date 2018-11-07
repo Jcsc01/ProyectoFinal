@@ -1,8 +1,13 @@
 from tkinter import *
 from tkinter import ttk,font
-import time
+from tkinter import messagebox
+from Usuario import Usuario
+from ConectarMsql import Conectar
+
+basedatos="usuario1"
 class Cajerito():
     def __init__(self):
+        self.id=0
         # creamos y configuramos la ventana principal
         self.ventana = Tk()
         self.ventana.title("Cajerito.-Ingreso de clave")
@@ -33,20 +38,32 @@ class Cajerito():
 
         self.text.focus_set()
         self.ventana.mainloop()
-    # inicio de sesion (prueba)-cambiar valores interactuando con base de datos
+
     def validar(self):
-        if self.clave.get() == "xd":
-            print("acceso permitido")
+        c=Conectar()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos)
+        claves=c.mi_cursor.fetchall()
+        encontrado=False
+        for i in claves:
+            if self.clave.get()==i[5]:
+                encontrado=True
+                self.id=i[0]
+        
+        c.cerrar()
+        if encontrado==True:
             self.ventana.destroy()
-            a=Menu()
+            a=Menu(self.id)
+
         else:
-            print("acceso denegado")
+            messagebox.showerror("Error","Clave incorrecta. por favor intenta de nuevo.")
             self.clave.set("")
             self.text.focus_set()
+        
 
 # Ventana menu(despues de ingresar la clave)
 class Menu():
-    def __init__(self):
+    def __init__(self,id):
+        self.id=id
         self.ventana2 = Tk()
         self.ventana2.title("Menu")
         self.ventana2.geometry('500x500+450+150')
@@ -54,10 +71,10 @@ class Menu():
         self.frame2 = Frame(self.ventana2)
         self.frame2.config(bg='#4169E1',relief='ridge',bd=10)
 
-        imagen1 = PhotoImage(file="MapaMundi.png")
+        self.imagen1 = PhotoImage(file="MapaMundi.png")
         imagen4 = PhotoImage(file="imagen4.png")
-        fondo= Label(self.frame2,image=imagen1)
-        self.fuente = font.Font(weight='bold',size=15)
+        fondo= Label(self.frame2,image=self.imagen1)
+        self.fuente = font.Font(weight='bold',size=11)
         label = ttk.Label(self.frame2,image=imagen4,text="¿Qué operación desea realizar?",font=self.fuente,foreground='white',compound=CENTER)
         self.consulta = ttk.Button(self.frame2,text="Consulta de Datos",command=self.datos,cursor='hand2')
         self.cambio_de_clave = ttk.Button(self.frame2,text="Cambio de Clave",command=self.cambiarClave,cursor='hand2')
@@ -73,7 +90,6 @@ class Menu():
         self.cobro_efectivo.place(x=100,y=300)
         self.trasnferencias.place(x=300,y=300)
         self.salir.place(x=195,y=400)
-
         self.ventana2.mainloop()
     # Funciones de botones
     def datos(self):
@@ -82,51 +98,179 @@ class Menu():
         self.consulta_de_datos.resizable(1,1)
         self.consulta_de_datos.title("Datos del usuario")
 
-        self.boton_volver = ttk.Button(self.consulta_de_datos,text="Volver",command=self.consulta_de_datos.destroy)
-        label_nombre = ttk.Label(self.consulta_de_datos,text="USUARIO:",font=self.fuente,foreground='white') 
-        label_dni = ttk.Label(self.consulta_de_datos,text="DNI:",font=self.fuente,foreground='white')
-        label_saldo = ttk.Label(self.consulta_de_datos,text="SALDO ACTUAL:",font=self.fuente,foreground='white')
+        c=Conectar()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
+        dato_usuario=c.mi_cursor.fetchall()
+        #variables de texto
+        usuario="Usuario: "
+        cuenta="Numero de cuenta: "
+        saldo="Saldo actual: "
+        # conectamos con mysql
+        usuario+=(dato_usuario[0][1]+" "+dato_usuario[0][2])
+        cuenta+=dato_usuario[0][4]
+        saldo+=str(dato_usuario[0][3])
+        boton_volver = ttk.Button(self.consulta_de_datos,text="Volver",command=self.consulta_de_datos.destroy)
+        label_nombre = ttk.Label(self.consulta_de_datos,text=usuario,font=self.fuente) 
+        label_cuenta = ttk.Label(self.consulta_de_datos,text=cuenta,font=self.fuente)
+        label_saldo = ttk.Label(self.consulta_de_datos,text=saldo,font=self.fuente)
         
-        label_nombre.pack(side=TOP)
-        label_dni.pack(side=TOP)
-        label_saldo.pack(side=TOP)
-        self.boton_volver.pack(side=TOP)
+        c.cerrar()
+
+        label_nombre.grid(row=0,column=0,sticky=W)
+        label_cuenta.grid(row=1,column=0,sticky=W)
+        label_saldo.grid(row=2,column=0)
+        boton_volver.place(x=110,y=150)
 
         self.consulta_de_datos.transient(master=self.ventana2)
         self.consulta_de_datos.grab_set()
         self.ventana2.wait_window(self.consulta_de_datos)
     def cambiarClave(self):
-        self.ventana2.destroy()
+        self.cambio_clave=Toplevel()
+        self.cambio_clave.geometry('300x200+550+300')
+        self.cambio_clave.resizable(1,1)
+        self.cambio_clave.title("Cambio de clave")
+
+        self.v_claveActual=StringVar()
+        self.v_claveNueva=StringVar()
+
+        label_actual=ttk.Label(self.cambio_clave,text="Clave actual",font=self.fuente)
+        entry_actual=ttk.Entry(self.cambio_clave,text=self.v_claveActual,show="*",width=6)
+        label_nueva=ttk.Label(self.cambio_clave,text="Clave nueva",font=self.fuente)
+        entry_nueva=ttk.Entry(self.cambio_clave,text=self.v_claveNueva,show="*",width=6)
+        boton_confirmar=ttk.Button(self.cambio_clave,text="Cambiar",command=self.aceptar)
+        boton_volver=ttk.Button(self.cambio_clave,text="Volver",command=self.cambio_clave.destroy)
+        
+        label_actual.grid(row=0,column=0)
+        entry_actual.grid(row=0,column=1)
+        label_nueva.grid(row=1,column=0)
+        entry_nueva.grid(row=1,column=1)
+        boton_confirmar.grid(row=2,column=0)
+        boton_volver.grid(row=2,column=1)
+
+        self.cambio_clave.transient(master=self.ventana2)
+        self.cambio_clave.grab_set()
+        self.ventana2.wait_window(self.cambio_clave)
     def retirar(self):
-        self.ventana2.destroy()
+        self.retiro=Toplevel()
+        self.retiro.geometry('300x200+550+300')
+        self.retiro.resizable(1,1)
+        self.retiro.title("Cobro en efectivo")
+        
+        self.v_monto_retirar=IntVar()
+
+        label_monto=ttk.Label(self.retiro,text="Monto a retirar:",font=self.fuente)
+        entry_monto=ttk.Entry(self.retiro,text=self.v_monto_retirar)
+        boton_confirmar=ttk.Button(self.retiro,text="Confirmar",command=self.aceptar3)
+        boton_volver=ttk.Button(self.retiro,text="Volver",command=self.retiro.destroy)
+
+        label_monto.grid(row=0,column=0)
+        entry_monto.grid(row=0,column=1)
+        boton_confirmar.grid(row=1,column=0)
+        boton_volver.grid(row=1,column=1)
+
+        self.retiro.transient(master=self.ventana2)
+        self.retiro.grab_set()
+        self.ventana2.wait_window(self.retiro)
     def transferir(self):
-        self.ventana2.destroy()
+        self.transferencia=Toplevel()
+        self.transferencia.geometry('300x200+550+300')
+        self.transferencia.resizable(1,1)
+        self.transferencia.title("Transferencia")
+
+        self.v_numeroCuenta=StringVar()
+        self.v_monto=IntVar()
+
+        label_numero_cuenta=ttk.Label(self.transferencia,text="Numero de cuenta:",font=self.fuente)
+        entry_numero_cuenta=ttk.Entry(self.transferencia,text=self.v_numeroCuenta)
+        label_monto=ttk.Label(self.transferencia,text="Monto:",font=self.fuente)
+        entry_monto=ttk.Entry(self.transferencia,text=self.v_monto)
+        boton_confirmar=ttk.Button(self.transferencia,text="Confirmar",command=self.aceptar2)
+        boton_volver=ttk.Button(self.transferencia,text="Volver",command=self.transferencia.destroy)
+        
+        label_numero_cuenta.grid(row=0,column=0)
+        entry_numero_cuenta.grid(row=0,column=1)
+        label_monto.grid(row=1,column=0)
+        entry_monto.grid(row=1,column=1)
+        boton_confirmar.grid(row=2,column=0)
+        boton_volver.grid(row=2,column=1)
+
+        self.transferencia.transient(master=self.ventana2)
+        self.transferencia.grab_set()
+        self.ventana2.wait_window(self.transferencia)
     def salir(self):
         self.ventana2.destroy()
+        self.c.cerrar()
         b=Cajerito()
-
-# Ventana consulta de saldos
-#class VentanaConsulta():
-#    def __init__(self):
-#        self.ventana3 = Tk()
-#        self.ventana3.title("Consulta de Saldos")
-#        self.ventana3.geometry('500x500+450+150')
-#        self.ventana3.resizable(0,0)
-#        self.frame3 = Frame(self.ventana3)
-#        self.frame3.config(bg='#4169E1',relief='ridge',bd=10)
-#
-#        imagen1 = PhotoImage(file="MapaMundi.png")
-#        fondo= Label(self.frame3,image=imagen1)
-#        fuente = font.Font(weight='bold',size=15)
-#
-#        label_nombre = ttk.Label(self.frame3,text="USUARIO:",font=fuente,foreground='white') 
-#        label_dni = ttk.Label(self.frame3,text="DNI:",font=fuente,foreground='white') 
-#        label_saldo = ttk.Label(self.frame3,text="SALDO ACTUAL:",font=fuente,foreground='white') 
-#
-#
-#        fondo.pack()
-#        self.frame3.pack(fill=BOTH,expand=1)
-#        self.ventana3.mainloop()
+    def aceptar(self):
+        # la nueva clave sea de 6 digitos
+        c=Conectar()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
+        dato_usuario=c.mi_cursor.fetchall()
+        if self.v_claveNueva.get()==dato_usuario[0][5]:
+            messagebox.showerror("Error","Clave ya usada")
+            self.cambio_clave.deiconify()
+        elif self.v_claveActual.get()!=dato_usuario[0][5]:
+            messagebox.showerror("Error","Clave actual incorrecta")
+            self.cambio_clave.deiconify()
+        elif self.v_claveNueva.get().isnumeric()==False:
+            messagebox.showerror("Error","La clave solo pueden ser digitos")
+            self.cambio_clave.deiconify()
+        else:
+            acepta=messagebox.askquestion("Confirmar","¿Desea cambiar de clave?")
+            if acepta=="yes":
+                c.mi_cursor.execute("UPDATE "+basedatos+" SET clave='"+self.v_claveNueva.get()+"' WHERE id="+str(self.id))
+                messagebox.showinfo("Cambio de clave","Clave cambiada.")
+                c.cerrar()
+                self.cambio_clave.destroy()
+            else:
+                self.cambio_clave.deiconify()
+    def aceptar2(self):
+        c=Conectar()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
+        dato_usuario=c.mi_cursor.fetchall()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos)
+        personas=c.mi_cursor.fetchall()
+        encontrado=False
+        for i in personas:
+            if self.v_numeroCuenta.get()==i[4]:
+                encontrado=True
+        if encontrado==False:
+            messagebox.showerror("Error","No existe una persona con ese numero de cuenta.")
+            self.transferencia.deiconify()
+        elif self.v_monto.get()>dato_usuario[0][3]:
+            messagebox.showerror("Error","No cuenta con ese monto disponible.")
+            self.transferencia.deiconify()
+        else:
+            acepta=messagebox.askquestion("Confirmar","Usted va a depositar "+str(self.v_monto.get())+"al numero de cuenta: "+self.v_numeroCuenta.get()+"\n"+
+            "¿Está seguro?")
+            if acepta=="yes":
+                c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE numerocuenta='"+self.v_numeroCuenta.get()+"'")
+                cuentas=c.mi_cursor.fetchall()
+                s= self.v_monto.get()+cuentas[0][3]
+                c.mi_cursor.execute("UPDATE "+basedatos+" SET saldo="+str(s)+" WHERE numerocuenta='"+self.v_numeroCuenta.get()+"'")
+                messagebox.showinfo("Transferencia","Transferencia completada con éxito.")
+                c.cerrar()
+                self.transferencia.destroy()
+            else:
+                self.transferencia.deiconify()
+    
+    def aceptar3(self):
+        c=Conectar()
+        c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
+        dato_usuario=c.mi_cursor.fetchall()
+        if self.v_monto_retirar.get()>dato_usuario[0][3]:
+            messagebox.showerror("Error","No cuenta con el saldo suficiente.")
+            self.retiro.deiconify()
+        else:
+            acepta=messagebox.askquestion("Confirmar","¿Desea retirar "+str(self.v_monto_retirar.get())+" soles?")
+            if acepta=="yes":
+                s=dato_usuario[0][3]-self.v_monto_retirar.get()
+                c.mi_cursor.execute("UPDATE "+basedatos+" SET saldo="+str(s)+" WHERE id="+str(self.id))
+                messagebox.showinfo("Retiro","Monto retirado.")
+                c.cerrar()
+                self.retiro.destroy()
+            else:
+                self.retiro.deiconify()
 
 # prueba de interfaz
 b=Cajerito()
