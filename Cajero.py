@@ -266,8 +266,7 @@ class Menu():
         c=Conectar()
         c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
         dato_usuario=c.mi_cursor.fetchall()
-       # if str(self.v_monto_retirar.get()).isdecimal==True:
-        #    messagebox.showerror("Error","Solo se admite numeros enteros.")
+        
         if self.v_monto_retirar.get()>dato_usuario[0][3]:
             messagebox.showerror("Error","No cuenta con el saldo suficiente.")
             self.retiro.deiconify()
