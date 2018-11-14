@@ -162,7 +162,7 @@ class Menu():
         self.retiro.title("Cobro en efectivo")
         self.retiro.config(bg='#6495ED')
         
-        self.v_monto_retirar=IntVar()
+        self.v_monto_retirar=StringVar()
         fuente1 = font.Font(weight='bold',size=13)
         label_monto=Label(self.retiro,text="Monto a retirar:",font=fuente1,bg='#6495ED')
         entry_monto=ttk.Entry(self.retiro,text=self.v_monto_retirar)
@@ -185,7 +185,7 @@ class Menu():
         self.transferencia.config(bg='#6495ED')
 
         self.v_numeroCuenta=StringVar()
-        self.v_monto=IntVar()
+        self.v_monto=StringVar()
         fuente1 = font.Font(weight='bold',size=13)
         label_numero_cuenta=Label(self.transferencia,text="Numero de cuenta:",font=fuente1,bg='#6495ED')
         entry_numero_cuenta=ttk.Entry(self.transferencia,text=self.v_numeroCuenta)
@@ -211,10 +211,17 @@ class Menu():
         b=Cajerito()
     def aceptar(self):
         # la nueva clave sea de 6 digitos
+        contar=0
+        for a in str(self.v_claveNueva):
+            contar+=1
         c=Conectar()
         c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
         dato_usuario=c.mi_cursor.fetchall()
-        if self.v_claveNueva.get()==dato_usuario[0][5]:
+        if self.v_claveActual.get()=="" or self.v_claveNueva.get()=="":
+            messagebox.showerror("Error","Complete los espacios en blanco.")
+        elif contar!=6:
+            messagebox.showerror("Error","La clave nueva debe de ser de 6 digitos")
+        elif self.v_claveNueva.get()==dato_usuario[0][5]:
             messagebox.showerror("Error","Clave ya usada")
             self.cambio_clave.deiconify()
         elif self.v_claveActual.get()!=dato_usuario[0][5]:
@@ -233,6 +240,11 @@ class Menu():
             else:
                 self.cambio_clave.deiconify()
     def aceptar2(self):
+        decimal=False
+        for a in self.v_monto.get():
+            if a==',' or a=='.':
+                decimal=True
+
         c=Conectar()
         c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
         dato_usuario=c.mi_cursor.fetchall()
@@ -242,19 +254,25 @@ class Menu():
         for i in personas:
             if self.v_numeroCuenta.get()==i[4]:
                 encontrado=True
-        if encontrado==False:
+        if self.v_monto.get()=="" or self.v_numeroCuenta.get()=="":
+            messagebox.showerror("Error","Complete los espacios en blanco.")
+        elif self.v_monto.get().isnumeric==False:
+            messagebox.showerror("Error","Monto debe ser números")
+        elif decimal==True:
+            messagebox.showerror("Error","Solo puede ingresar numeros enteros.")
+        elif encontrado==False:
             messagebox.showerror("Error","No existe una persona con ese numero de cuenta.")
             self.transferencia.deiconify()
-        elif self.v_monto.get()>dato_usuario[0][3]:
+        elif int(self.v_monto.get())>dato_usuario[0][3]:
             messagebox.showerror("Error","No cuenta con ese monto disponible.")
             self.transferencia.deiconify()
         else:
-            acepta=messagebox.askquestion("Confirmar","Usted va a depositar "+str(self.v_monto.get())+"al numero de cuenta: "+self.v_numeroCuenta.get()+"\n"+
+            acepta=messagebox.askquestion("Confirmar","Usted va a depositar "+ self.v_monto.get()+"al numero de cuenta: "+self.v_numeroCuenta.get()+"\n"+
             "¿Está seguro?")
             if acepta=="yes":
                 c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE numerocuenta='"+self.v_numeroCuenta.get()+"'")
                 cuentas=c.mi_cursor.fetchall()
-                s= self.v_monto.get()+cuentas[0][3]
+                s= int(self.v_monto.get())+cuentas[0][3]
                 c.mi_cursor.execute("UPDATE "+basedatos+" SET saldo="+str(s)+" WHERE numerocuenta='"+self.v_numeroCuenta.get()+"'")
                 messagebox.showinfo("Transferencia","Transferencia completada con éxito.")
                 c.cerrar()
@@ -263,17 +281,27 @@ class Menu():
                 self.transferencia.deiconify()
     
     def aceptar3(self):
+        # decimal
+        decimal=False
+        for a in self.v_monto_retirar.get():
+            if a=="," or a==".":
+                decimal=True
         c=Conectar()
         c.mi_cursor.execute("SELECT * FROM "+basedatos+" WHERE id="+str(self.id))
         dato_usuario=c.mi_cursor.fetchall()
-        
-        if self.v_monto_retirar.get()>dato_usuario[0][3]:
+        if self.v_monto_retirar.get()=="":
+            messagebox.showerror("Error","Complete el espacio en blanco")
+        elif self.v_monto_retirar.get().isalpha:
+            messagebox.showerror("Error","Monto debe ser números.")
+        elif decimal==True:
+            messagebox.showerror("Error","Solo puede ingresar numeros entero.")
+        elif int(self.v_monto_retirar.get())>dato_usuario[0][3]:
             messagebox.showerror("Error","No cuenta con el saldo suficiente.")
             self.retiro.deiconify()
         else:
-            acepta=messagebox.askquestion("Confirmar","¿Desea retirar "+str(self.v_monto_retirar.get())+" soles?")
+            acepta=messagebox.askquestion("Confirmar","¿Desea retirar "+self.v_monto_retirar.get()+" soles?")
             if acepta=="yes":
-                s=dato_usuario[0][3]-self.v_monto_retirar.get()
+                s=dato_usuario[0][3]-int(self.v_monto_retirar.get())
                 c.mi_cursor.execute("UPDATE "+basedatos+" SET saldo="+str(s)+" WHERE id="+str(self.id))
                 messagebox.showinfo("Retiro","Monto retirado.")
                 c.cerrar()
